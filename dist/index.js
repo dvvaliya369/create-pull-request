@@ -457,7 +457,15 @@ function createPullRequest(inputs) {
             // deleted after being merged or closed. Without this the push using
             // '--force-with-lease' fails due to "stale info."
             // https://github.com/peter-evans/create-pull-request/issues/633
-            yield git.exec(['remote', 'prune', branchRemoteName]);
+            try {
+                yield git.remotePrune(branchRemoteName);
+                core.info(`Successfully pruned remote '${branchRemoteName}'`);
+            }
+            catch (error) {
+                // Prune is a cleanup operation and not critical for the action to succeed.
+                // Log a warning and continue if it fails after retries.
+                core.warning(`Failed to prune remote '${branchRemoteName}' after retries: ${utils.getErrorMessage(error)}. Continuing...`);
+            }
             core.endGroup();
             // Apply the branch suffix if set
             if (inputs.branchSuffix) {
@@ -968,6 +976,16 @@ class GitCommandManager {
                 return '';
             }
             return stdout;
+        });
+    }
+    remotePrune(remoteName) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield utils.retryWithBackoff(() => __awaiter(this, void 0, void 0, function* () {
+                yield this.exec(['remote', 'prune', remoteName]);
+            }), 3, // maxRetries
+            1000, // initialDelayMs
+            2 // backoffMultiplier
+            );
         });
     }
     exec(args_1) {
@@ -1796,6 +1814,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInputAsArray = getInputAsArray;
 exports.getStringAsArray = getStringAsArray;
@@ -1808,6 +1835,7 @@ exports.parseDisplayNameEmail = parseDisplayNameEmail;
 exports.fileExistsSync = fileExistsSync;
 exports.readFile = readFile;
 exports.getErrorMessage = getErrorMessage;
+exports.retryWithBackoff = retryWithBackoff;
 const core = __importStar(__nccwpck_require__(7484));
 const fs = __importStar(__nccwpck_require__(9896));
 const path = __importStar(__nccwpck_require__(6928));
@@ -1904,6 +1932,40 @@ function getErrorMessage(error) {
     if (error instanceof Error)
         return error.message;
     return String(error);
+}
+/**
+ * Retry a function with exponential backoff
+ * @param fn The function to retry
+ * @param maxRetries Maximum number of retry attempts (default: 3)
+ * @param initialDelayMs Initial delay in milliseconds (default: 1000)
+ * @param backoffMultiplier Multiplier for exponential backoff (default: 2)
+ * @returns The result of the function
+ */
+function retryWithBackoff(fn_1) {
+    return __awaiter(this, arguments, void 0, function* (fn, maxRetries = 3, initialDelayMs = 1000, backoffMultiplier = 2) {
+        let lastError;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return yield fn();
+            }
+            catch (error) {
+                lastError = error;
+                if (attempt < maxRetries) {
+                    const delayMs = initialDelayMs * Math.pow(backoffMultiplier, attempt);
+                    core.debug(`Retry attempt ${attempt + 1}/${maxRetries} failed: ${getErrorMessage(error)}. Retrying in ${delayMs}ms...`);
+                    yield sleep(delayMs);
+                }
+            }
+        }
+        throw lastError;
+    });
+}
+/**
+ * Sleep for a specified number of milliseconds
+ * @param ms Milliseconds to sleep
+ */
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 

@@ -368,6 +368,17 @@ export class GitCommandManager {
     return stdout
   }
 
+  async remotePrune(remoteName: string): Promise<void> {
+    await utils.retryWithBackoff(
+      async () => {
+        await this.exec(['remote', 'prune', remoteName])
+      },
+      3, // maxRetries
+      1000, // initialDelayMs
+      2 // backoffMultiplier
+    )
+  }
+
   async exec(
     args: string[],
     {

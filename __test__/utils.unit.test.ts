@@ -117,4 +117,69 @@ describe('utils tests', () => {
       )
     }
   })
+
+  test('retryWithBackoff succeeds on first attempt', async () => {
+    let attempts = 0
+    const result = await utils.retryWithBackoff(async () => {
+      attempts++
+      return 'success'
+    })
+    expect(result).toEqual('success')
+    expect(attempts).toEqual(1)
+  })
+
+  test('retryWithBackoff succeeds after retries', async () => {
+    let attempts = 0
+    const result = await utils.retryWithBackoff(
+      async () => {
+        attempts++
+        if (attempts < 3) {
+          throw new Error('Temporary failure')
+        }
+        return 'success'
+      },
+      3,
+      10 // Use short delay for tests
+    )
+    expect(result).toEqual('success')
+    expect(attempts).toEqual(3)
+  })
+
+  test('retryWithBackoff fails after max retries', async () => {
+    let attempts = 0
+    try {
+      await utils.retryWithBackoff(
+        async () => {
+          attempts++
+          throw new Error('Persistent failure')
+        },
+        3,
+        10 // Use short delay for tests
+      )
+      // Fail the test if an error wasn't thrown
+      expect(true).toEqual(false)
+    } catch (e: any) {
+      expect(e.message).toEqual('Persistent failure')
+      expect(attempts).toEqual(4) // Initial attempt + 3 retries
+    }
+  })
+
+  test('retryWithBackoff respects custom retry parameters', async () => {
+    let attempts = 0
+    try {
+      await utils.retryWithBackoff(
+        async () => {
+          attempts++
+          throw new Error('Always fails')
+        },
+        2, // maxRetries
+        10 // initialDelayMs
+      )
+      // Fail the test if an error wasn't thrown
+      expect(true).toEqual(false)
+    } catch (e: any) {
+      expect(e.message).toEqual('Always fails')
+      expect(attempts).toEqual(3) // Initial attempt + 2 retries
+    }
+  })
 })

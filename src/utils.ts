@@ -135,3 +135,45 @@ export function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message
   return String(error)
 }
+
+/**
+ * Retry a function with exponential backoff
+ * @param fn The function to retry
+ * @param maxRetries Maximum number of retry attempts (default: 3)
+ * @param initialDelayMs Initial delay in milliseconds (default: 1000)
+ * @param backoffMultiplier Multiplier for exponential backoff (default: 2)
+ * @returns The result of the function
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  initialDelayMs = 1000,
+  backoffMultiplier = 2
+): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      if (attempt < maxRetries) {
+        const delayMs = initialDelayMs * Math.pow(backoffMultiplier, attempt)
+        core.debug(
+          `Retry attempt ${attempt + 1}/${maxRetries} failed: ${getErrorMessage(
+            error
+          )}. Retrying in ${delayMs}ms...`
+        )
+        await sleep(delayMs)
+      }
+    }
+  }
+  throw lastError
+}
+
+/**
+ * Sleep for a specified number of milliseconds
+ * @param ms Milliseconds to sleep
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
