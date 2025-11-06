@@ -9,6 +9,8 @@ const ERROR_PR_ALREADY_EXISTS = 'A pull request already exists for'
 const ERROR_PR_REVIEW_TOKEN_SCOPE =
   'Validation Failed: "Could not resolve to a node with the global id of'
 const ERROR_PR_FORK_COLLAB = `Fork collab can't be granted by someone without permission`
+const ERROR_PR_REVIEWER_NOT_COLLABORATOR =
+  'Reviews may only be requested from collaborators'
 
 const blobCreationLimit = pLimit(8)
 
@@ -207,12 +209,26 @@ export class GitHubHelper {
           ...requestReviewersParams
         })
       } catch (e) {
-        if (utils.getErrorMessage(e).includes(ERROR_PR_REVIEW_TOKEN_SCOPE)) {
+        const errorMessage = utils.getErrorMessage(e)
+        if (errorMessage.includes(ERROR_PR_REVIEW_TOKEN_SCOPE)) {
           core.error(
             `Unable to request reviewers. If requesting team reviewers a 'repo' scoped PAT is required.`
           )
+          throw e
+        } else if (errorMessage.includes(ERROR_PR_REVIEWER_NOT_COLLABORATOR)) {
+          core.warning(
+            `Unable to request reviewers. One or more of the users or teams you specified is not a collaborator of this repository.`
+          )
+          core.warning(
+            `Reviews may only be requested from collaborators. Please ensure the specified reviewers have been added as collaborators to the repository, or consider using team reviewers with users added to the team.`
+          )
+          core.warning(
+            `See: https://docs.github.com/rest/pulls/review-requests#request-reviewers-for-a-pull-request`
+          )
+          // Don't throw - allow PR creation/update to continue
+        } else {
+          throw e
         }
-        throw e
       }
     }
 
