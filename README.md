@@ -58,7 +58,7 @@ All inputs are **optional**. If not set, sensible defaults will be used.
 | `committer` | The committer name and email address in the format `Display Name <email@address.com>`. Defaults to the GitHub Actions bot user on github.com. | `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>` |
 | `author` | The author name and email address in the format `Display Name <email@address.com>`. Defaults to the user who triggered the workflow run. | `${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>` |
 | `signoff` | Add [`Signed-off-by`](https://git-scm.com/docs/git-commit#Documentation/git-commit.txt---signoff) line by the committer at the end of the commit log message. | `false` |
-| `branch` | The pull request branch name. | `create-pull-request/patch` |
+| `branch` | The pull request branch name. Supports `{base}` placeholder which will be replaced with the base branch name. | `create-pull-request/patch` |
 | `delete-branch` | Delete the `branch` if it doesn't have an active pull request associated with it. See [delete-branch](#delete-branch). | `false` |
 | `branch-suffix` | The branch suffix type when using the alternative branching strategy. Valid values are `random`, `timestamp` and `short-commit-hash`. See [Alternative strategy](#alternative-strategy---always-create-a-new-pull-request-branch) for details. | |
 | `base` | Sets the pull request base branch. | Defaults to the branch checked out in the workflow. |
@@ -188,6 +188,12 @@ To use this strategy, set input `branch-suffix` with one of the following option
 - `timestamp` - Commits will be made to a branch suffixed by a timestamp. e.g. `create-pull-request/patch-1569322532`, `create-pull-request/patch-1569322552`
 
 - `short-commit-hash` - Commits will be made to a branch suffixed with the short SHA1 commit hash. e.g. `create-pull-request/patch-fcdfb59`, `create-pull-request/patch-394710b`
+
+#### Branch name placeholders
+
+The `branch` input supports placeholders that will be replaced with dynamic values:
+
+- `{base}` - Replaced with the base branch name. e.g. `branch: create-pull-request/{base}-patch` will create branches like `create-pull-request/main-patch` when the base is `main`.
 
 ### Controlling committed files
 

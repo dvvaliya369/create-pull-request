@@ -113,6 +113,10 @@ export async function createPullRequest(inputs: Inputs): Promise<void> {
     }
     // If the base is not specified it is assumed to be the working base.
     const base = inputs.base ? inputs.base : workingBase
+    // Replace {base} placeholder in branch name
+    if (inputs.branch.includes('{base}')) {
+      inputs.branch = inputs.branch.replace(/\{base\}/g, base)
+    }
     // Throw an error if the base and branch are not different branches
     // of the 'origin' remote. An identically named branch in the `fork`
     // remote is perfectly fine.
