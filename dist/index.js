@@ -1328,7 +1328,7 @@ class GitHubHelper {
             options.auth = `${token}`;
         }
         if (githubServerHostname !== 'github.com') {
-            options.baseUrl = `https://${githubServerHostname}/api/v3`;
+            options.baseUrl = `https://${githubServerHostname}/api/v1`;
         }
         else {
             options.baseUrl = 'https://api.github.com';
