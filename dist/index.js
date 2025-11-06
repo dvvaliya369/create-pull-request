@@ -457,7 +457,30 @@ function createPullRequest(inputs) {
             // deleted after being merged or closed. Without this the push using
             // '--force-with-lease' fails due to "stale info."
             // https://github.com/peter-evans/create-pull-request/issues/633
-            yield git.exec(['remote', 'prune', branchRemoteName]);
+            // The prune operation can fail due to transient network or authentication issues.
+            // We make it non-fatal with retry logic since it's a cleanup operation.
+            let pruneSuccess = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    yield git.exec(['remote', 'prune', branchRemoteName]);
+                    pruneSuccess = true;
+                    break;
+                }
+                catch (error) {
+                    const errorMessage = utils.getErrorMessage(error);
+                    if (attempt < 3) {
+                        core.warning(`Failed to prune remote '${branchRemoteName}' (attempt ${attempt}/3): ${errorMessage}. Retrying...`);
+                        // Wait 1 second before retrying
+                        yield new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    else {
+                        core.warning(`Failed to prune remote '${branchRemoteName}' after ${attempt} attempts: ${errorMessage}. Continuing anyway as this is a non-critical operation.`);
+                    }
+                }
+            }
+            if (pruneSuccess) {
+                core.info(`Successfully pruned stale refs from remote '${branchRemoteName}'`);
+            }
             core.endGroup();
             // Apply the branch suffix if set
             if (inputs.branchSuffix) {
