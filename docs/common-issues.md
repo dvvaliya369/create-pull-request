@@ -2,6 +2,7 @@
 
 - [Troubleshooting](#troubleshooting)
   - [Create using an existing branch as the PR branch](#create-using-an-existing-branch-as-the-pr-branch)
+  - [Pull request shows "out-of-date with the base branch" warning](#pull-request-shows-out-of-date-with-the-base-branch-warning)
 - [Frequently requested features](#use-case-create-a-pull-request-to-update-x-on-release)
   - [Disable force updates to existing PR branches](#disable-force-updates-to-existing-pr-branches)
   - [Add a no-verify option to bypass git hooks](#add-a-no-verify-option-to-bypass-git-hooks)
@@ -15,6 +16,44 @@ A common point of confusion is to try and use an existing branch containing chan
 If you have an existing branch that you just want to create a PR for, then I recommend using the official [GitHub CLI](https://cli.github.com/manual/gh_pr_create) in a workflow step.
 
 Alternatively, if you are trying to keep a branch up to date with another branch, then you can follow [this example](https://github.com/peter-evans/create-pull-request/blob/main/docs/examples.md#keep-a-branch-up-to-date-with-another).
+
+### Pull request shows "out-of-date with the base branch" warning
+
+If your pull request shows a warning that it is "out-of-date with the base branch" even though it should contain all the latest changes, this is typically caused by not specifying the `base` input correctly when using a branch promotion workflow.
+
+**Problem:** When checking out a target branch (e.g., `production`) and resetting it to match a source branch (e.g., `main`), the action needs to know which branch should be the base of the pull request.
+
+**Solution:** Always specify the `base` input to match the target branch:
+
+```yml
+- uses: actions/checkout@v4
+  with:
+    ref: production
+- name: Reset promotion branch
+  run: |
+    git fetch origin main:main
+    git reset --hard main
+- name: Create Pull Request
+  uses: peter-evans/create-pull-request@v7
+  with:
+    branch: production-promotion
+    base: production  # Must specify the target branch as base
+```
+
+**Better approach:** Check out the source branch and specify the target as the base:
+
+```yml
+- uses: actions/checkout@v4
+  with:
+    ref: main  # Check out source branch
+- name: Create Pull Request
+  uses: peter-evans/create-pull-request@v7
+  with:
+    branch: production-promotion
+    base: production  # Specify target branch as base
+```
+
+See the [Keep a branch up-to-date with another](examples.md#keep-a-branch-up-to-date-with-another) example for more details.
 
 ## Frequently requested features
 

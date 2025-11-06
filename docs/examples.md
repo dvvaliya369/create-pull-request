@@ -63,6 +63,36 @@ This is a use case where a branch should be kept up to date with another by open
 
 In this example scenario, a branch called `production` should be updated via pull request to keep it in sync with `main`. Merging the pull request is effectively promoting those changes to production.
 
+#### Recommended approach
+
+The recommended approach is to check out the source branch and specify the target branch as the `base`:
+
+```yml
+name: Create production promotion pull request
+on:
+  push:
+    branches:
+      - main
+jobs:
+  productionPromotion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: production-promotion
+          base: production
+```
+
+This approach ensures the pull request branch is correctly based on `main` and will merge cleanly into `production` without any "out-of-date" warnings from GitHub.
+
+#### Alternative approach using reset
+
+If you need to perform additional operations, you can check out the target branch and reset it:
+
 ```yml
 name: Create production promotion pull request
 on:
@@ -84,7 +114,10 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: production-promotion
+          base: production
 ```
+
+**Important:** When using this approach, you must specify `base: production` to ensure the pull request is created with the correct base branch. Without this, you may see "out-of-date" warnings from GitHub.
 
 ## Use case: Create a pull request to update X on release
 
