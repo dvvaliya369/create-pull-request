@@ -63,6 +63,8 @@ This is a use case where a branch should be kept up to date with another by open
 
 In this example scenario, a branch called `production` should be updated via pull request to keep it in sync with `main`. Merging the pull request is effectively promoting those changes to production.
 
+**Important:** The workflow must push the updated base branch to the remote repository before creating the pull request. This ensures GitHub recognizes the base branch is up-to-date and prevents the "This branch is out-of-date with the base branch" warning.
+
 ```yml
 name: Create production promotion pull request
 on:
@@ -80,6 +82,9 @@ jobs:
         run: |
           git fetch origin main:main
           git reset --hard main
+          # Push the updated base branch to remote
+          # This is required to prevent the "out-of-date" warning in GitHub
+          git push origin production
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
